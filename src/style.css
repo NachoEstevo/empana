@@ -42,7 +42,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -51,7 +52,8 @@ button {
   cursor: pointer;
 }
 
-input {
+input,
+select {
   border: 1px solid var(--border);
 }
 
@@ -311,7 +313,6 @@ input {
 }
 
 .inline-form,
-.split-field-row,
 .flavor-actions,
 .action-grid,
 .truco-actions,
@@ -353,7 +354,8 @@ input {
 }
 
 .inline-form input,
-.split-field-row input,
+.split-field-card input,
+.field select,
 .field input,
 .truco-card input {
   width: 100%;
@@ -362,6 +364,10 @@ input {
   border-radius: 14px;
   background: #fffaf3;
   color: var(--text);
+}
+
+.field select {
+  appearance: none;
 }
 
 .inline-form input::placeholder {
@@ -387,8 +393,7 @@ input {
 .flavor-actions,
 .summary-row,
 .person-summary,
-.settlement-row,
-.split-field-row {
+.settlement-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -531,13 +536,28 @@ button:disabled {
   gap: 10px;
 }
 
-.split-field-row {
-  align-items: stretch;
+.split-field-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 18px;
+  background: var(--surface-strong);
+  border: 1px solid #eadfce;
 }
 
-.split-field-row input:last-of-type {
-  max-width: 124px;
-  text-align: right;
+.split-field-main,
+.split-field-amount {
+  display: grid;
+  gap: 10px;
+}
+
+.split-field-amount {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.compact-field span {
+  font-size: 0.84rem;
 }
 
 .truco-board {
@@ -599,6 +619,11 @@ button:disabled {
 
   .split-count-block {
     grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+
+  .split-field-card {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 180px);
     align-items: end;
   }
 }

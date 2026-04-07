@@ -59,11 +59,13 @@ function App() {
     splitEmpanadasCount > 0 ? state.empanadasTotalPrice / splitEmpanadasCount : 0
   const peopleBreakdown = rawPeopleBreakdown.map((entry) => {
     const empanadaTotal = entry.empanadaCount * impliedUnitPrice
+    const extraTotalPerPerson = extrasShare
 
     return {
       ...entry,
       empanadaTotal,
-      total: empanadaTotal + extrasShare,
+      extraTotal: extraTotalPerPerson,
+      total: empanadaTotal + extraTotalPerPerson,
     }
   })
 
@@ -88,17 +90,93 @@ function App() {
     }),
   ].join('\n')
 
-  const settlements =
-    state.payerId
-      ? peopleBreakdown
-          .filter((entry) => entry.person.id !== state.payerId)
-          .map((entry) => ({
-            from: entry.person.name,
-            to: state.people.find((person) => person.id === state.payerId)?.name ?? '',
-            amount: entry.total,
-          }))
-          .filter((entry) => entry.amount > 0)
-      : []
+  const balances = new Map(
+    state.people.map((person) => [
+      person.id,
+      {
+        person,
+        owed: 0,
+        paid: 0,
+      },
+    ]),
+  )
+
+  peopleBreakdown.forEach((entry) => {
+    const currentBalance = balances.get(entry.person.id)
+    if (!currentBalance) return
+    currentBalance.owed += entry.empanadaTotal
+  })
+
+  if (state.empanadasPayerId) {
+    const payerBalance = balances.get(state.empanadasPayerId)
+    if (payerBalance) payerBalance.paid += empanadasTotal
+  } else {
+    peopleBreakdown.forEach((entry) => {
+      const currentBalance = balances.get(entry.person.id)
+      if (!currentBalance) return
+      currentBalance.paid += entry.empanadaTotal
+    })
+  }
+
+  state.splitFields.forEach((field) => {
+    const share = state.people.length ? field.amount / state.people.length : 0
+
+    state.people.forEach((person) => {
+      const currentBalance = balances.get(person.id)
+      if (!currentBalance) return
+      currentBalance.owed += share
+    })
+
+    if (field.payerId) {
+      const payerBalance = balances.get(field.payerId)
+      if (payerBalance) payerBalance.paid += field.amount
+      return
+    }
+
+    state.people.forEach((person) => {
+      const currentBalance = balances.get(person.id)
+      if (!currentBalance) return
+      currentBalance.paid += share
+    })
+  })
+
+  const creditors = Array.from(balances.values())
+    .map((entry) => ({
+      person: entry.person,
+      amount: entry.paid - entry.owed,
+    }))
+    .filter((entry) => entry.amount > 0.01)
+
+  const debtors = Array.from(balances.values())
+    .map((entry) => ({
+      person: entry.person,
+      amount: entry.owed - entry.paid,
+    }))
+    .filter((entry) => entry.amount > 0.01)
+
+  const settlements: { from: string; to: string; amount: number }[] = []
+  let debtorIndex = 0
+  let creditorIndex = 0
+
+  while (debtorIndex < debtors.length && creditorIndex < creditors.length) {
+    const debtor = debtors[debtorIndex]
+    const creditor = creditors[creditorIndex]
+    const amount = Math.min(debtor.amount, creditor.amount)
+
+    if (amount > 0.01) {
+      settlements.push({
+        from: debtor.person.name,
+        to: creditor.person.name,
+        amount,
+      })
+    }
+
+    debtor.amount -= amount
+    creditor.amount -= amount
+
+    if (debtor.amount <= 0.01) debtorIndex += 1
+    if (creditor.amount <= 0.01) creditorIndex += 1
+  }
 
   const winner =
     state.truco.teamAScore >= 30
@@ -166,7 +244,12 @@ function App() {
         selectedPersonId:
           current.selectedPersonId === personId ? nextPeople[0].id : current.selectedPersonId,
         orderByPerson: nextOrder,
-        payerId: current.payerId === personId ? '' : current.payerId,
+        empanadasPayerId:
+          current.empanadasPayerId === personId ? '' : current.empanadasPayerId,
+        splitFields: current.splitFields.map((field) => ({
+          ...field,
+          payerId: field.payerId === personId ? '' : field.payerId,
+        })),
       }
     })
   }
@@ -218,7 +301,7 @@ function App() {
 
     setState((current) => ({
       ...current,
-      splitFields: [...current.splitFields, { id: createId('split'), name, amount: 0 }],
+      splitFields: [...current.splitFields, { id: createId('split'), name, amount: 0, payerId: '' }],
     }))
     setSplitFieldDraft('')
   }
@@ -236,8 +319,8 @@ function App() {
       orderByPerson: Object.fromEntries(current.people.map((person) => [person.id, {}])),
       empanadasTotalPrice: 0,
       splitEmpanadasCountOverride: null,
-      splitFields: current.splitFields.map((field) => ({ ...field, amount: 0 })),
-      payerId: '',
+      empanadasPayerId: '',
+      splitFields: current.splitFields.map((field) => ({ ...field, amount: 0, payerId: '' })),
     }))
   }
 
@@ -326,10 +409,17 @@ function App() {
               peopleBreakdown={peopleBreakdown}
               settlements={settlements}
               splitFieldDraft={splitFieldDraft}
+              empanadasPayerId={state.empanadasPayerId}
               onEmpanadasTotalPriceChange={(value) =>
                 setState((current) => ({
                   ...current,
                   empanadasTotalPrice: clampNumber(Number(value), 0),
+                }))
+              }
+              onEmpanadasPayerChange={(payerId) =>
+                setState((current) => ({
+                  ...current,
+                  empanadasPayerId: payerId,
                 }))
               }
               onSplitEmpanadasCountChange={(value) =>
@@ -349,7 +439,6 @@ function App() {
               onUpdateSplitField={updateSplitField}
               onAddSplitField={addSplitField}
               onRemoveSplitField={removeSplitField}
-              onSetPayer={(payerId) => setState((current) => ({ ...current, payerId }))}
             />
           ) : null}
 

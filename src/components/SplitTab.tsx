@@ -1,10 +1,12 @@
-import { ArrowRight, HandCoins, Trash2, Users } from 'lucide-react'
+import { ArrowRight, HandCoins, Trash2 } from 'lucide-react'
 import { formatCurrency } from '../state'
 import type { AppState, Person, SplitField } from '../data'
 
 type PersonBreakdown = {
   person: Person
   empanadaCount: number
+  empanadaTotal: number
+  extraTotal: number
   total: number
 }
 
@@ -28,14 +30,15 @@ type SplitTabProps = {
   peopleBreakdown: PersonBreakdown[]
   settlements: Settlement[]
   splitFieldDraft: string
+  empanadasPayerId: string
   onEmpanadasTotalPriceChange: (value: string) => void
+  onEmpanadasPayerChange: (payerId: string) => void
   onSplitEmpanadasCountChange: (value: string) => void
   onQuickSetCount: (count: number) => void
   onSplitFieldDraftChange: (value: string) => void
   onUpdateSplitField: (fieldId: string, patch: Partial<SplitField>) => void
   onAddSplitField: () => void
   onRemoveSplitField: (fieldId: string) => void
-  onSetPayer: (payerId: string) => void
 }
 
 export function SplitTab({
@@ -52,15 +55,18 @@ export function SplitTab({
   peopleBreakdown,
   settlements,
   splitFieldDraft,
+  empanadasPayerId,
   onEmpanadasTotalPriceChange,
+  onEmpanadasPayerChange,
   onSplitEmpanadasCountChange,
   onQuickSetCount,
   onSplitFieldDraftChange,
   onUpdateSplitField,
   onAddSplitField,
   onRemoveSplitField,
-  onSetPayer,
 }: SplitTabProps) {
+  const hasSelectedPayers = Boolean(empanadasPayerId || state.splitFields.some((field) => field.payerId))
+
   return (
     <>
       <div className="workspace">
@@ -108,6 +114,18 @@ export function SplitTab({
             </div>
           </div>
 
+          <label className="field">
+            <span>Quién pagó las empanadas</span>
+            <select value={empanadasPayerId} onChange={(event) => onEmpanadasPayerChange(event.target.value)}>
+              <option value="">Sin marcar</option>
+              {state.people.map((person) => (
+                <option key={person.id} value={person.id}>
+                  {person.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <div className="overview-grid">
             <div className="overview-card">
               <small>Total de empanadas</small>
@@ -128,29 +146,49 @@ export function SplitTab({
               <HandCoins size={16} />
               Extras compartidos
             </span>
-            <p>Todo lo que quieran repartir entre todos.</p>
+            <p>Cada extra también puede tener su propio pagador.</p>
           </div>
 
           <div className="split-fields">
             {state.splitFields.map((field) => (
-              <div key={field.id} className="split-field-row">
-                <input
-                  value={field.name}
-                  onChange={(event) => onUpdateSplitField(field.id, { name: event.target.value })}
-                />
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min="0"
-                  step="100"
-                  value={field.amount}
-                  onChange={(event) =>
-                    onUpdateSplitField(field.id, { amount: Number(event.target.value) })
-                  }
-                />
-                <button type="button" className="ghost-button icon-only" onClick={() => onRemoveSplitField(field.id)}>
-                  <Trash2 size={16} />
-                </button>
+              <div key={field.id} className="split-field-card">
+                <div className="split-field-main">
+                  <input
+                    value={field.name}
+                    onChange={(event) => onUpdateSplitField(field.id, { name: event.target.value })}
+                  />
+
+                  <div className="split-field-amount">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min="0"
+                      step="100"
+                      value={field.amount}
+                      onChange={(event) =>
+                        onUpdateSplitField(field.id, { amount: Number(event.target.value) })
+                      }
+                    />
+                    <button type="button" className="ghost-button icon-only" onClick={() => onRemoveSplitField(field.id)}>
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                <label className="field compact-field">
+                  <span>Pagó</span>
+                  <select
+                    value={field.payerId}
+                    onChange={(event) => onUpdateSplitField(field.id, { payerId: event.target.value })}
+                  >
+                    <option value="">Sin marcar</option>
+                    {state.people.map((person) => (
+                      <option key={person.id} value={person.id}>
+                        {person.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
             ))}
           </div>
@@ -173,35 +211,6 @@ export function SplitTab({
           </form>
         </section>
 
-        <section className="workspace-section">
-          <div className="section-topline">
-            <span className="icon-label">
-              <Users size={16} />
-              Quién pagó
-            </span>
-            <p>Elegí quién pagó para ver las transferencias.</p>
-          </div>
-
-          <div className="payer-bar">
-            <button
-              type="button"
-              className={!state.payerId ? 'payer-chip active' : 'payer-chip'}
-              onClick={() => onSetPayer('')}
-            >
-              Cada uno paga lo suyo
-            </button>
-            {state.people.map((person) => (
-              <button
-                key={person.id}
-                type="button"
-                className={state.payerId === person.id ? 'payer-chip active' : 'payer-chip'}
-                onClick={() => onSetPayer(person.id)}
-              >
-                Pagó {person.name}
-              </button>
-            ))}
-          </div>
-        </section>
       </div>
 
       <aside className="summary-panel">
@@ -230,7 +239,7 @@ export function SplitTab({
                 <span>{entry.person.name}</span>
                 <small>
                   {extrasShare
-                    ? `${entry.empanadaCount} emp. + ${formatCurrency(extrasShare)} extras`
+                    ? `${entry.empanadaCount} emp. + ${formatCurrency(entry.extraTotal)} extras`
                     : `${entry.empanadaCount} emp.`}
                 </small>
               </div>
@@ -252,7 +261,9 @@ export function SplitTab({
             ))
           ) : (
             <p className="empty-state">
-              Si pagó una persona, seleccionala arriba para ver cuánto le debe cada uno.
+              {hasSelectedPayers
+                ? 'Con la configuración actual no quedan transferencias pendientes.'
+                : 'Marcá quién pagó las empanadas o algún extra para ver las transferencias.'}
             </p>
           )}
         </section>

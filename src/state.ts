@@ -44,7 +44,20 @@ function sanitizeFlavors(value: unknown): Flavor[] {
   return flavors.length ? flavors : buildDefaultFlavors()
 }
 
-function sanitizeSplitFields(value: unknown): SplitField[] {
+function sanitizePayerId(
+  value: unknown,
+  validPersonIds: Set<string>,
+  fallback = '',
+): string {
+  if (typeof value === 'string' && validPersonIds.has(value)) return value
+  return validPersonIds.has(fallback) ? fallback : ''
+}
+
+function sanitizeSplitFields(
+  value: unknown,
+  validPersonIds: Set<string>,
+  fallbackPayerId = '',
+): SplitField[] {
   if (!Array.isArray(value) || value.length === 0) return buildDefaultSplitFields()
 
   const fields = value
@@ -53,6 +66,11 @@ function sanitizeSplitFields(value: unknown): SplitField[] {
       id: typeof item.id === 'string' ? item.id : createId('split'),
       name: typeof item.name === 'string' && item.name.trim() ? item.name.trim() : 'Extra',
       amount: clampNumber(Number(item.amount), 0),
+      payerId: sanitizePayerId(
+        (item as SplitField & { payerId?: unknown }).payerId,
+        validPersonIds,
+        fallbackPayerId,
+      ),
     }))
 
   return fields.length ? fields : buildDefaultSplitFields()
@@ -61,6 +79,7 @@ function sanitizeSplitFields(value: unknown): SplitField[] {
 export function sanitizeState(state: AppState): AppState {
   const fallback = buildDefaultState()
   const safePeople = Array.isArray(state.people) && state.people.length ? state.people : fallback.people
+  const safePersonIds = new Set(safePeople.map((person) => person.id))
   const safeFlavors = sanitizeFlavors(state.flavors)
   const safeFlavorIds = new Set(safeFlavors.map((flavor) => flavor.id))
   const safeOrder = Object.fromEntries(
@@ -88,6 +107,10 @@ export function sanitizeState(state: AppState): AppState {
     typeof nextCountOverrideRaw === 'number'
       ? nextCountOverrideRaw
       : Number.NaN
+  const legacyPayerId = sanitizePayerId(
+    (state as AppState & { payerId?: unknown }).payerId,
+    safePersonIds,
+  )
 
   return {
     activeTab:
@@ -105,8 +128,12 @@ export function sanitizeState(state: AppState): AppState {
       Number.isNaN(nextCountOverride)
         ? null
         : clampNumber(nextCountOverride, 0),
-    splitFields: sanitizeSplitFields(state.splitFields),
-    payerId: safePeople.some((person) => person.id === state.payerId) ? state.payerId : '',
+    empanadasPayerId: sanitizePayerId(
+      (state as AppState & { empanadasPayerId?: unknown }).empanadasPayerId,
+      safePersonIds,
+      legacyPayerId,
+    ),
+    splitFields: sanitizeSplitFields(state.splitFields, safePersonIds, legacyPayerId),
     truco: {
       teamAName: state.truco?.teamAName || 'Nosotros',
       teamBName: state.truco?.teamBName || 'Ellos',

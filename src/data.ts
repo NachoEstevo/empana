@@ -16,6 +16,7 @@ export type SplitField = {
   id: string
   name: string
   amount: number
+  payerId: string
 }
 
 export type TrucoState = {
@@ -33,8 +34,8 @@ export type AppState = {
   orderByPerson: Record<string, Record<string, number>>
   empanadasTotalPrice: number
   splitEmpanadasCountOverride: number | null
+  empanadasPayerId: string
   splitFields: SplitField[]
-  payerId: string
   truco: TrucoState
 }
 
@@ -54,9 +55,9 @@ export const DEFAULT_FLAVORS: Flavor[] = [
 ]
 
 export const DEFAULT_SPLIT_FIELDS: SplitField[] = [
-  { id: 'bebida', name: 'Bebida', amount: 0 },
-  { id: 'picada', name: 'Picada', amount: 0 },
-  { id: 'postre', name: 'Postre', amount: 0 },
+  { id: 'bebida', name: 'Bebida', amount: 0, payerId: '' },
+  { id: 'picada', name: 'Picada', amount: 0, payerId: '' },
+  { id: 'postre', name: 'Postre', amount: 0, payerId: '' },
 ]
 
 export const TAB_COPY: Record<TabId, { label: string; title: string; subtitle: string }> = {
@@ -68,7 +69,7 @@ export const TAB_COPY: Record<TabId, { label: string; title: string; subtitle: s
   split: {
     label: 'Split',
     title: 'Dividí la cuenta',
-    subtitle: 'Poné el total y la cantidad de empanadas, cargá extras y repartí.',
+    subtitle: 'Poné el total, marcá quién pagó cada cosa y repartí.',
   },
   truco: {
     label: 'Truco',
@@ -108,8 +109,8 @@ export function buildDefaultState(): AppState {
     orderByPerson: { [firstPerson.id]: {} },
     empanadasTotalPrice: 0,
     splitEmpanadasCountOverride: null,
+    empanadasPayerId: '',
     splitFields: buildDefaultSplitFields(),
-    payerId: '',
     truco: {
       teamAName: 'Nosotros',
       teamBName: 'Ellos',
