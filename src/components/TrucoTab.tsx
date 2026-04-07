@@ -30,7 +30,7 @@ export function TrucoTab({
             <strong>{score}</strong>
             <small>{Number(score) >= 15 ? 'Buenas' : 'Malas'}</small>
             <div className="truco-actions">
-              {[-1, 1, 2, 3].map((delta) => (
+              {[-1, 1].map((delta) => (
                 <button
                   key={delta}
                   type="button"
