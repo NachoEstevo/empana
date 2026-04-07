@@ -50,7 +50,7 @@ export const DEFAULT_FLAVORS: Flavor[] = [
   { id: 'humita', name: 'Humita', custom: false },
   { id: 'verdura', name: 'Verdura', custom: false },
   { id: 'caprese', name: 'Caprese', custom: false },
-  { id: 'fugazzeta', name: 'Fugazzeta', custom: false },
+  { id: 'cheeseburger', name: 'Cheeseburger', custom: false },
   { id: 'roquefort', name: 'Roquefort', custom: false },
 ]
 

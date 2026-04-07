@@ -192,7 +192,7 @@ export function PedidoTab({
                       <h3>{flavor.name}</h3>
                     </div>
                     <div className="flavor-meta">
-                      <span>Mesa</span>
+                      <span>Total</span>
                       <strong>{tableQty}</strong>
                     </div>
                   </div>
